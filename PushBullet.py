@@ -5,11 +5,10 @@ config = ConfigParser.RawConfigParser()
 config.read('scripts.cfg')
 
 Log_Location = config.get('PushBullet', 'log_location')
-
-logging.basicConfig(format='[%(asctime)s | %(levelname)s]  - %(message)s', level=logging.INFO, filename=Log_Location, filemode='a')
-
 API_KEY = config.get('PushBullet', 'api_key')
 auth = "Basic " + (API_KEY).encode("base64").rstrip()
+
+logging.basicConfig(format='[%(asctime)s | %(levelname)s]  - %(message)s', level=logging.INFO, filename=Log_Location, filemode='a')
 
 """
 Generates a list of devices which the API Key has access to.
@@ -118,13 +117,26 @@ def getIds(devices):
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser(description='Send PushBullet note')
+   parser.add_argument('-l', '--list', help='List all devices', action='store_true')
    parser.add_argument('-a', '--all', help='Send message to all devices', action='store_true')
    parser.add_argument('-i', '--id', action='append', help='The device id or email address associated with the device, which the message is to be sent to')
-   parser.add_argument('-t', '--title', help='The title of the note to be sent', required=True)
-   parser.add_argument('-m', '--message', help='The message of the note to be sent', required=True)
+   parser.add_argument('-t', '--title', help='The title of the note to be sent')
+   parser.add_argument('-m', '--message', help='The message of the note to be sent')
    
    args = parser.parse_args()
    devices = getDeviceID()
+   
+   if args.list:
+      for email, id in devices.iteritems():
+         print email, ":", id
+         
+      exit()
+      
+   if args.title == None:
+      exit("Title must be specified")
+   if args.message == None:
+      exit("Message must be specified")
+
    all = getIds(devices)
    ids = []
    
