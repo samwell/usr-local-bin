@@ -20,8 +20,6 @@ def getDeviceID():
    global auth
 
    req = urllib2.Request('https://www.pushbullet.com/api/devices')
-   req.add_header('Accept', 'application/json')
-   req.add_header('Content-type', 'application/x-www-form-urlencoded')
    req.add_header('Authorization', auth)
 
    try:
@@ -74,8 +72,6 @@ def send(data):
    reqData = {'type':'note', 'title' : data['title'], 'body' : data['message'], 'device_id' : str(data['id'])}
 
    req = urllib2.Request('https://www.pushbullet.com/api/pushes')
-   req.add_header('Accept', 'application/json')
-   req.add_header('Content-type', 'application/x-www-form-urlencoded')
    req.add_header('Authorization', auth)
    req.add_data(urllib.urlencode(reqData))
 
@@ -123,22 +119,31 @@ def getIds(devices):
 if __name__ == '__main__':
    parser = argparse.ArgumentParser(description='Send PushBullet note')
    parser.add_argument('-a', '--all', help='Send message to all devices', action='store_true')
-   parser.add_argument('-i', '--id', action='append', help='The device id which the message is to be sent to')
+   parser.add_argument('-i', '--id', action='append', help='The device id or email address associated with the device, which the message is to be sent to')
    parser.add_argument('-t', '--title', help='The title of the note to be sent', required=True)
    parser.add_argument('-m', '--message', help='The message of the note to be sent', required=True)
    
    args = parser.parse_args()
+   devices = getDeviceID()
+   all = getIds(devices)
    ids = []
    
    if args.all and args.id != None:
-      all = getIds(getDeviceID())
+      print "!="
       ids = all + args.id
    elif args.all and args.id == None:
-      all = getIds(getDeviceID())
+      print "=="
       ids = all
-   else:
-      ids = args.id
+      
+   for id in args.id:
+      if (id in devices) and (devices[id] not in ids):
+         ids.append(devices[id])
+      elif (id not in devices) and int(id) not in ids:
+         ids.append(id)
+      else:
+         print "Duplicate device id:", id
+         logging.info("Duplicate device id was entered, skipped this id: " + id)
       
    for id in ids:
-      data = {'id':id, 'title':args.title, 'message':args.message} 
-      send(data)
+      data = {}
+      send({'id':id, 'title':args.title, 'message':args.message} )
