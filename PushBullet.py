@@ -129,10 +129,8 @@ if __name__ == '__main__':
    ids = []
    
    if args.all and args.id != None:
-      print "!="
       ids = all + args.id
    elif args.all and args.id == None:
-      print "=="
       ids = all
       
    for id in args.id:
@@ -145,5 +143,4 @@ if __name__ == '__main__':
          logging.info("Duplicate device id was entered, skipped this id: " + id)
       
    for id in ids:
-      data = {}
-      send({'id':id, 'title':args.title, 'message':args.message} )
+      send({'id':id, 'title':args.title, 'message':args.message})
