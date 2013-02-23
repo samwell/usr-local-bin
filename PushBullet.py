@@ -15,35 +15,13 @@ Generates a list of devices which the API Key has access to.
 
 Returns a dictionary of all devices { [device owner]:[device id] }
 """
-def getDeviceID():
+def getPushDevices():
    global auth
 
    req = urllib2.Request('https://www.pushbullet.com/api/devices')
    req.add_header('Authorization', auth)
 
-   try:
-      res = urllib2.urlopen(req)
-   except urllib2.URLError, e:
-      message = ""
-      
-      if e.code == 400:
-         message = "Pretty sure a parameter was missing: " + str(e.code)
-      elif e.code == 401:
-         message = "No valid API key was provided: " + str(e.code)
-      elif e.code == 402:
-         message = "Request was correct, but failed: " + str(e.code)
-      elif e.code == 403:
-         message = "Invalid API key: " + str(e.code)
-      elif e.code == 404:
-         message = "Requested item doesn't exist: " + str(e.code)
-      else: 
-         message = "Unknown status code recieved: " + str(e.code)
-      
-      logging.critical("Error in retriving devices. " + message)
-      exit(message)         
-   except Exception, e:
-      logging.critical("Error sending to " + str(data['id']))
-      exit("Error sending to " + str(data['id']))
+   res = sendPushRequest(req, "Retriving Devices")
 
    devices = json.loads(res.read())
    devices = devices['shared_devices'] + devices['devices']
@@ -66,7 +44,7 @@ data {
    'id': [id of which device you want to send to]
 }
 """
-def send(data):
+def sendPushNote(data):
    global auth
    reqData = {'type':'note', 'title' : data['title'], 'body' : data['message'], 'device_id' : str(data['id'])}
 
@@ -74,39 +52,46 @@ def send(data):
    req.add_header('Authorization', auth)
    req.add_data(urllib.urlencode(reqData))
 
+   message = "Sending Message\nTitle: " + data['title']
+   message += "\nMessage: " + data['message']
+   message += "\nID: " + str(data['id'])
+   
+   sendPushRequest(req, message)
+      
+"""
+Sends requests and handles all status codes.
+
+request - A Request Object
+message - A String
+
+Returns: A file Object
+"""
+def sendPushRequest(request, message):
    try:
-      res = urllib2.urlopen(req)
-      if res.getcode() == 200:
-         message = "Title: " + data['title']
-         message += "\nMessage: " + data['message']
-         message += "\nID: " + str(data['id'])
-      
-         logging.info("Sent message successfully\n" + message)
+      res = urllib2.urlopen(request)
+      if res.getcode() == 200:      
+         logging.info("Successful Request\nRequest: " + message)
+         return res
    except urllib2.URLError, e:
-      message = ""
-      
       if e.code == 400:
-         message = "Pretty sure a parameter was missing: " + str(e.code)
+         errMessage = "Pretty sure a parameter was missing. Error Code: " + str(e.code)
       elif e.code == 401:
-         message = "No valid API key was provided: " + str(e.code)
+         errMessage = "No valid API key was provided. Error Code: " + str(e.code)
       elif e.code == 402:
-         message = "Request was correct, but failed: " + str(e.code)
+         errMessage = "Request was correct, but failed. Error Code: " + str(e.code)
       elif e.code == 403:
-         message = "Invalid API key: " + str(e.code)
+         errMessage = "Invalid API key. Error Code: " + str(e.code)
       elif e.code == 404:
-         message = "Requested item doesn't exist: " + str(e.code)
+         errMessage = "Requested item doesn't exist. Error Code: " + str(e.code)
       else:
-         message = "Unknown status code recieved: " + str(e.code)
-      
-      message += "\nTitle: " + data['title']
-      message += "\nMessage: " + data['message']
-      message += "\nID: " + str(data['id'])
-      
-      logging.critical(message)
-      exit(message)         
+         errMessage = "Unknown status code recieved. Error Code: " + str(e.code)
+         
+      logging.critical(errMessage + "\nRequest: " + message)
+      exit(errMessage + "\nRequest: " + message)         
    except Exception, e:
-      logging.critical("Error sending to " + str(data['id']))
-      exit("Error sending to " + str(data['id']))
+      logging.critical("Error when making a request\nRequest: " + message)
+      logging.critical(e)
+      exit("Error when making a request\nRequest: " + message)
    
 def getIds(devices):
    ids = []
@@ -124,7 +109,7 @@ if __name__ == '__main__':
    parser.add_argument('-m', '--message', help='The message of the note to be sent')
    
    args = parser.parse_args()
-   devices = getDeviceID()
+   devices = getPushDevices()
    
    if args.list:
       for email, id in devices.iteritems():
@@ -155,4 +140,4 @@ if __name__ == '__main__':
          logging.info("Duplicate device id was entered, skipped this id: " + id)
       
    for id in ids:
-      send({'id':id, 'title':args.title, 'message':args.message})
+      sendPushNote({'id':id, 'title':args.title, 'message':args.message})
