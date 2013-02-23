@@ -1,14 +1,24 @@
 #!/usr/bin/python2
-import ConfigParser, urllib, urllib2, json, argparse, logging
+import LogUncaught, ConfigParser, urllib, urllib2, json, argparse, logging
 
-config = ConfigParser.RawConfigParser()
-config.read('scripts.cfg')
+pushConfig = ConfigParser.RawConfigParser()
+pushConfig.read('scripts.cfg')
 
-Log_Location = config.get('PushBullet', 'log_location')
-API_KEY = config.get('PushBullet', 'api_key')
+API_KEY = pushConfig.get('PushBullet', 'api_key')
 auth = "Basic " + (API_KEY).encode("base64").rstrip()
 
-logging.basicConfig(format='[%(asctime)s | %(levelname)s]  - %(message)s', level=logging.INFO, filename=Log_Location, filemode='a')
+# Logger File Handler
+pushLFH = logging.FileHandler(pushConfig.get('PushBullet', 'log_location'))
+pushLFH.setLevel(logging.DEBUG)
+
+# Logger Formatter
+pushLFORMAT = logging.Formatter('[%(asctime)s | %(levelname)s]  - %(message)s')
+pushLFH.setFormatter(pushLFORMAT)
+
+# Logger
+pushLogger = logging.getLogger("pushbullet_logger")
+pushLogger.setLevel(logging.DEBUG)
+pushLogger.addHandler(pushLFH)
 
 """
 Generates a list of devices which the API Key has access to.
@@ -31,7 +41,7 @@ def getPushDevices():
    for device in devices:
       ids[device['ownerName']] = device['id']
       
-   logging.info("Looking for available devices. Found: " + str(ids))
+   pushLogger.info("Looking for available devices. Found: " + str(ids))
 
    return ids
 
@@ -70,7 +80,7 @@ def sendPushRequest(request, message):
    try:
       res = urllib2.urlopen(request)
       if res.getcode() == 200:      
-         logging.info("Successful Request\nRequest: " + message)
+         pushLogger.info("Successful Request\nRequest: " + message)
          return res
    except urllib2.URLError, e:
       if e.code == 400:
@@ -86,11 +96,11 @@ def sendPushRequest(request, message):
       else:
          errMessage = "Unknown status code recieved. Error Code: " + str(e.code)
          
-      logging.critical(errMessage + "\nRequest: " + message)
+      pushLogger.critical(errMessage + "\nRequest: " + message)
       exit(errMessage + "\nRequest: " + message)         
    except Exception, e:
-      logging.critical("Error when making a request\nRequest: " + message)
-      logging.critical(e)
+      pushLogger.critical("Error when making a request\nRequest: " + message)
+      pushLogger.critical(e)
       exit("Error when making a request\nRequest: " + message)
    
 def getIds(devices):
@@ -137,7 +147,7 @@ if __name__ == '__main__':
          ids.append(id)
       else:
          print "Duplicate device id:", id
-         logging.info("Duplicate device id was entered, skipped this id: " + id)
+         pushLogger.info("Duplicate device id was entered, skipped this id: " + id)
       
    for id in ids:
       sendPushNote({'id':id, 'title':args.title, 'message':args.message})
