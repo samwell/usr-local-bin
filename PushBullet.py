@@ -39,7 +39,7 @@ def getPushDevices():
    ids = {}
 
    for device in devices:
-      ids[device['ownerName']] = device['id']
+      ids[device['owner_name']] = device['id']
       
    pushLogger.info("Looking for available devices. Found: " + str(ids))
 
@@ -51,22 +51,24 @@ Send a message to a device by putting the title, message, and id in a dictionary
 data { 
    'title': [title you want to send], 
    'message': [message you want to send],
-   'id': [id of which device you want to send to]
+   'id': [list of id(s) of which device(s) you want to send to]
 }
 """
 def sendPushNote(data):
    global auth
-   reqData = {'type':'note', 'title' : data['title'], 'body' : data['message'], 'device_id' : str(data['id'])}
 
-   req = urllib2.Request('https://www.pushbullet.com/api/pushes')
-   req.add_header('Authorization', auth)
-   req.add_data(urllib.urlencode(reqData))
+   for id in data['id']:
+      reqData = {'type':'note', 'title' : data['title'], 'body' : data['message'], 'device_id' : str(id)}
 
-   message = "Sending Message\nTitle: " + data['title']
-   message += "\nMessage: " + data['message']
-   message += "\nID: " + str(data['id'])
-   
-   sendPushRequest(req, message)
+      req = urllib2.Request('https://www.pushbullet.com/api/pushes')
+      req.add_header('Authorization', auth)
+      req.add_data(urllib.urlencode(reqData))
+
+      message = "Sending Message\nTitle: " + data['title']
+      message += "\nMessage: " + data['message']
+      message += "\nID: " + str(id)
+
+      sendPushRequest(req, message)
       
 """
 Sends requests and handles all status codes.
@@ -110,14 +112,17 @@ def getIds(devices):
       
    return ids
 
+def getPushDevicesIds():
+   return getIds(getPushDevices())
+
 if __name__ == '__main__':
    parser = argparse.ArgumentParser(description='Send PushBullet note')
    parser.add_argument('-l', '--list', help='List all devices', action='store_true')
    parser.add_argument('-a', '--all', help='Send message to all devices', action='store_true')
-   parser.add_argument('-i', '--id', action='append', help='The device id or email address associated with the device, which the message is to be sent to')
+   parser.add_argument('-i', '--id', action='append', default=[], help='The device id or email address associated with the device, which the message is to be sent to')
    parser.add_argument('-t', '--title', help='The title of the note to be sent')
    parser.add_argument('-m', '--message', help='The message of the note to be sent')
-   
+
    args = parser.parse_args()
    devices = getPushDevices()
    
@@ -139,7 +144,7 @@ if __name__ == '__main__':
       ids = all + args.id
    elif args.all and args.id == None:
       ids = all
-      
+
    for id in args.id:
       if (id in devices) and (devices[id] not in ids):
          ids.append(devices[id])
@@ -149,5 +154,4 @@ if __name__ == '__main__':
          print "Duplicate device id:", id
          pushLogger.info("Duplicate device id was entered, skipped this id: " + id)
       
-   for id in ids:
-      sendPushNote({'id':id, 'title':args.title, 'message':args.message})
+   sendPushNote({'id':ids, 'title':args.title, 'message':args.message})
